@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Store Inventory Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for enhanced UI */
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .item-row:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            transition: background-color 0.3s;
+        }
+        .btn-custom {
+            background: linear-gradient(45deg, #ff6b6b, #feca57);
+            color: white;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 text-white">
+
+    <div class="max-w-6xl mx-auto">
+        <header class="text-center mb-8 fade-in">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4">Store Inventory Tracker</h1>
+            <p class="text-xl opacity-90">Effortlessly manage your store's stock levels, prices, and details.</p>
+        </header>
+
+        <!-- Add Item Form -->
+        <section class="bg-white bg-opacity-10 backdrop-blur-md rounded-lg p-6 mb-8 shadow-xl fade-in">
+            <h2 class="text-2xl font-semibold mb-4">Add New Item</h2>
+            <form id="add-item-form" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <input type="text" id="item-name" placeholder="Item Name" class="p-3 rounded-lg bg-white bg-opacity-20 text-black placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-400" required>
+                <input type="number" id="item-quantity" placeholder="Quantity" class="p-3 rounded-lg bg-white bg-opacity-20 text-black placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-400" min="0" required>
+                <input type="number" id="item-price" placeholder="Price ($)" step="0.01" min="0" class="p-3 rounded-lg bg-white bg-opacity-20 text-black placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-400" required>
+                <input type="text" id="item-category" placeholder="Category" class="p-3 rounded-lg bg-white bg-opacity-20 text-black placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-400" required>
+                <button type="submit" class="btn-custom px-4 py-3">Add Item</button>
+            </form>
+        </section>
+
+        <!-- Inventory Summary -->
+        <section class="bg-white bg-opacity-10 backdrop-blur-md rounded-lg p-6 mb-8 shadow-xl fade-in">
+            <h2 class="text-2xl font-semibold mb-4">Inventory Summary</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                <div class="bg-blue-500 bg-opacity-20 p-4 rounded-lg">
+                    <h3 class="text-lg font-medium">Total Items</h3>
+                    <p id="total-items" class="text-3xl font-bold">0</p>
+                </div>
+                <div class="bg-green-500 bg-opacity-20 p-4 rounded-lg">
+                    <h3 class="text-lg font-medium">Total Value ($)</h3>
+                    <p id="total-value" class="text-3xl font-bold">0.00</p>
+                </div>
+                <div class="bg-red-500 bg-opacity-20 p-4 rounded-lg">
+                    <h3 class="text-lg font-medium">Low Stock Items ( < 5 )</h3>
+                    <p id="low-stock" class="text-3xl font-bold">0</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Inventory List -->
+        <section class="bg-white bg-opacity-10 backdrop-blur-md rounded-lg p-6 shadow-xl fade-in">
+            <h2 class="text-2xl font-semibold mb-4">Item List</h2>
+            <div id="inventory-list" class="overflow-x-auto">
+                <!-- Items will be added here -->
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // Initialize inventory from local storage
+        let inventory = JSON.parse(localStorage.getItem('storeInventory')) || [];
+
+        // DOM elements
+        const addForm = document.getElementById('add-item-form');
+        const inventoryList = document.getElementById('inventory-list');
+        const totalItemsEl = document.getElementById('total-items');
+        const totalValueEl = document.getElementById('total-value');
+        const lowStockEl = document.getElementById('low-stock');
+
+        // Function to render inventory
+        function renderInventory() {
+            inventoryList.innerHTML = '';
+            let totalItems = 0;
+            let totalValue = 0;
+            let lowStockCount = 0;
+
+            if (inventory.length === 0) {
+                inventoryList.innerHTML = '<p class="text-center text-gray-300 fade-in">No items in inventory yet. Add one above!</p>';
+                return;
+            }
+
+            const table = document.createElement('table');
+            table.className = 'w-full text-black bg-white bg-opacity-20 rounded-lg';
+            table.innerHTML = `
+                <thead>
+                    <tr class="border-b border-gray-300">
+                        <th class="text-left p-3">Image</th>
+                        <th class="text-left p-3">Name</th>
+                        <th class="text-left p-3">Quantity</th>
+                        <th class="text-left p-3">Price</th>
+                        <th class="text-left p-3">Category</th>
+                        <th class="text-left p-3">Total Value</th>
+                        <th class="text-center p-3">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            `;
+            const tbody = table.querySelector('tbody');
+
+            inventory.forEach((item, index) => {
+                totalItems++;
+                const itemTotalValue = item.quantity * item.price;
+                totalValue += itemTotalValue;
+                if (item.quantity < 5) lowStockCount++;
+
+                const row = document.createElement('tr');
+                row.className = 'item-row border-b border-gray-200 fade-in';
+                row.innerHTML = `
+                    <td class="p-3">
+                        <div class="w-12 h-12 rounded-md overflow-hidden bg-gray-200 flex items-center justify-center">
+                            <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/63b98d1b-979d-4abe-b7ed-0cc1dfd39fbb.png" alt="Iconic representation of ${item.name} item, showing initial letter in a neutral background" onerror="this.style.display='none';" />
+                        </div>
+                    </td>
+                    <td class="p-3">${item.name}</td>
+                    <td class="p-3">${item.quantity}</td>
+                    <td class="p-3">$${item.price.toFixed(2)}</td>
+                    <td class="p-3">${item.category}</td>
+                    <td class="p-3">$${itemTotalValue.toFixed(2)}</td>
+                    <td class="p-3 text-center">
+                        <button onclick="editItem(${index})" class="btn-custom px-2 py-1 mr-2 text-sm">Edit</button>
+                        <button onclick="deleteItem(${index})" class="btn-custom px-2 py-1 bg-red-500 hover:bg-red-600 text-sm">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            inventoryList.appendChild(table);
+
+            // Update summary
+            totalItemsEl.textContent = totalItems;
+            totalValueEl.textContent = totalValue.toFixed(2);
+            lowStockEl.textContent = lowStockCount;
+        }
+
+        // Add item
+        addForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('item-name').value.trim();
+            const quantity = parseInt(document.getElementById('item-quantity').value);
+            const price = parseFloat(document.getElementById('item-price').value);
+            const category = document.getElementById('item-category').value.trim();
+
+            if (name && quantity >= 0 && price >= 0 && category) {
+                inventory.push({ name, quantity, price, category });
+                saveInventory();
+                renderInventory();
+                addForm.reset();
+            } else {
+                alert('Please fill all fields with valid data.');
+            }
+        });
+
+        // Edit item
+        function editItem(index) {
+            const item = inventory[index];
+            document.getElementById('item-name').value = item.name;
+            document.getElementById('item-quantity').value = item.quantity;
+            document.getElementById('item-price').value = item.price;
+            document.getElementById('item-category').value = item.category;
+            deleteItem(index); // Remove old item, new one will be added on submit
+        }
+
+        // Delete item
+        function deleteItem(index) {
+            if (confirm('Are you sure you want to delete this item?')) {
+                inventory.splice(index, 1);
+                saveInventory();
+                renderInventory();
+            }
+        }
+
+        // Save to local storage
+        function saveInventory() {
+            localStorage.setItem('storeInventory', JSON.stringify(inventory));
+        }
+
+        // Initial render
+        renderInventory();
+    </script>
+</body>
+</html>
+</content>
+</create_file>
