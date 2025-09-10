@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Inventory SPA — Store Manager</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --nav-bg:#2b3640; --nav-btn:#3f4a54; --accent:#2fb866; --muted:#f7fafb; --text:#222; --danger:#d9534f;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:'Nunito',system-ui,Segoe UI,Roboto,Arial;background:#f1f6f8;color:var(--text)}
+    .topbar{background:var(--nav-bg);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:10px 18px}
+    .nav-left{display:flex;gap:8px;align-items:center}
+    .nav-btn{background:var(--nav-btn);color:#e9eef2;padding:8px 12px;border-radius:6px;border:none;cursor:pointer;font-weight:700}
+    .nav-btn.active{box-shadow:0 4px 10px rgba(0,0,0,0.15);transform:translateY(-2px)}
+    .brand{font-weight:800;display:flex;align-items:center;gap:10px}
+    .brand img{width:30px;height:30px;border-radius:6px}
+
+    .container{max-width:980px;margin:22px auto;padding:0 18px}
+    h1{margin:6px 0 18px;font-size:20px;text-align:center}
+
+    /* sections */
+    .section{display:none}
+    .section.active{display:block}
+
+    /* layout cards */
+    .card{background:#fff;border-radius:8px;padding:14px;border:1px solid #e6eef2;box-shadow:0 6px 18px rgba(17,24,28,0.04);margin-bottom:14px}
+
+    /* add form */
+    form .row{display:flex;gap:8px}
+    .form-control{flex:1;display:flex;flex-direction:column;margin-bottom:8px}
+    .form-control label{font-size:13px;margin-bottom:6px}
+    .form-control input, .form-control textarea, .form-control select{padding:8px;border:1px solid #e2e8f0;border-radius:6px;font-size:14px}
+    .btn{padding:8px 12px;border-radius:6px;border:none;cursor:pointer;font-weight:700}
+    .btn.primary{background:var(--accent);color:#fff}
+    .btn.ghost{background:transparent;border:1px solid #ccd8dd}
+    .btn.danger{background:var(--danger);color:#fff}
+
+    /* product grid */
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+    .product{border:1px solid #e8eef1;border-radius:8px;padding:10px;background:#fff;display:flex;flex-direction:column;align-items:center}
+    .product img{max-width:120px;max-height:120px;object-fit:contain}
+    .product h3{margin:8px 0 6px;font-size:16px}
+    .product .meta{font-size:13px;color:#556}
+
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:8px;text-align:left;border-bottom:1px solid #eef3f6}
+    .right{text-align:right}
+
+    .small{font-size:13px;color:#666}
+    .corner-flag{position:fixed;left:6px;bottom:6px;background:#ffd5e1;padding:6px 8px;border-radius:6px;font-size:12px;color:#800}
+
+    @media(max-width:560px){.row{flex-direction:column}}
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="nav-left">
+      <button class="nav-btn active" data-target="home">Home</button>
+      <button class="nav-btn" data-target="cart">Cart</button>
+      <button class="nav-btn" data-target="inventory">Inventory</button>
+      <button class="nav-btn" data-target="sales">Sales</button>
+      <button class="nav-btn" data-target="add">Add Product</button>
+    </div>
+    <div class="brand">Store Manager <img src="https://upload.wikimedia.org/wikipedia/commons/8/84/OOjs_UI_icon_userAvatar.svg" alt="logo"></div>
+  </div>
+
+  <main class="container">
+    <h1>Store Manager — Inventory SPA</h1>
+
+    <!-- HOME / Catalog -->
+    <section id="home" class="section active">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <strong>Product Catalog</strong>
+          <input id="searchCatalog" placeholder="Search products..." style="padding:8px;border:1px solid #e6eef2;border-radius:6px;width:220px">
+        </div>
+        <div id="catalog" class="grid"></div>
+      </div>
+    </section>
+
+    <!-- CART -->
+    <section id="cart" class="section">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <strong>Shopping Cart</strong>
+          <div class="small">Items in cart: <span id="cartCount">0</span></div>
+        </div>
+        <div id="cartList"></div>
+        <div style="display:flex;justify-content:flex-end;margin-top:10px;gap:8px">
+          <button class="btn ghost" id="clearCart">Clear Cart</button>
+          <button class="btn primary" id="checkout">Checkout</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- INVENTORY -->
+    <section id="inventory" class="section">
+      <div class="card">
+        <strong>Inventory</strong>
+        <div style="margin-top:10px;overflow:auto">
+          <table>
+            <thead><tr><th>Name</th><th>Price</th><th>Quantity</th><th class="right">Actions</th></tr></thead>
+            <tbody id="inventoryTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- SALES -->
+    <section id="sales" class="section">
+      <div class="card">
+        <strong>Sales History</strong>
+        <div class="small" style="margin-top:8px">Total Revenue: ₹ <span id="totalRevenue">0.00</span></div>
+        <div style="margin-top:12px;overflow:auto"><table><thead><tr><th>Date</th><th>Items</th><th class="right">Total (₹)</th></tr></thead><tbody id="salesTable"></tbody></table></div>
+      </div>
+    </section>
+
+    <!-- ADD PRODUCT -->
+    <section id="add" class="section">
+      <div class="card">
+        <strong>Add / Edit Product</strong>
+        <form id="productForm" style="margin-top:10px">
+          <div class="row">
+            <div class="form-control"><label for="pName">Product Name</label><input id="pName" required></div>
+            <div class="form-control"><label for="pPrice">Price (₹)</label><input id="pPrice" type="number" min="0" step="0.01" required></div>
+          </div>
+          <div class="row">
+            <div class="form-control"><label for="pQty">Quantity</label><input id="pQty" type="number" min="0" required></div>
+            <div class="form-control"><label for="pImage">Image URL</label><input id="pImage" placeholder="Paste image URL (optional)"></div>
+          </div>
+          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+            <button type="button" class="btn ghost" id="resetForm">Reset</button>
+            <button type="submit" class="btn primary">Save Product</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+  </main>
+
+  <div class="corner-flag">localhost:3000</div>
+
+  <script>
+    // --- Data keys ---
+    const KEY_PRODUCTS = 'sm_products';
+    const KEY_CART = 'sm_cart';
+    const KEY_SALES = 'sm_sales';
+    const SAME_IMG = 'https://upload.wikimedia.org/wikipedia/commons/6/6b/Shopping_cart_icon_green.svg';
+
+    // --- app state helpers ---
+    function read(key){ try{ return JSON.parse(localStorage.getItem(key)) || []; }catch(e){return []} }
+    function write(key,val){ localStorage.setItem(key,JSON.stringify(val)); }
+
+    // seed sample product if empty
+    function seed(){ let p = read(KEY_PRODUCTS); if(p.length===0){ p=[{id:uid(),name:'Sample Item',price:0,qty:10,image:SAME_IMG}]; write(KEY_PRODUCTS,p);} }
+
+    // uid
+    function uid(){ return 'p_'+Math.random().toString(36).slice(2,9); }
+
+    // navigation
+    const navButtons = document.querySelectorAll('.nav-btn');
+    navButtons.forEach(b=>b.addEventListener('click',()=>{ navButtons.forEach(x=>x.classList.remove('active')); b.classList.add('active'); showSection(b.dataset.target); }));
+    function showSection(id){ document.querySelectorAll('.section').forEach(s=>s.classList.remove('active')); document.getElementById(id).classList.add('active'); if(id==='home') renderCatalog(); if(id==='inventory') renderInventory(); if(id==='cart') renderCart(); if(id==='sales') renderSales(); }
+
+    // render catalog
+    const catalogEl = document.getElementById('catalog');
+    function renderCatalog(filter=''){
+      const products = read(KEY_PRODUCTS);
+      const q = filter.trim().toLowerCase();
+      catalogEl.innerHTML = '';
+      if(products.length===0){ catalogEl.innerHTML = '<div class="small">No products — add some from Add Product.</div>'; return }
+      products.filter(p=>p.name.toLowerCase().includes(q)).forEach(p=>{
+        const div = document.createElement('div'); div.className='product card';
+        div.innerHTML = `
+          <img src="${p.image||SAME_IMG}" alt="${escapeHtml(p.name)}">
+          <h3>${escapeHtml(p.name)}</h3>
+          <div class="meta">Price: ₹ ${Number(p.price).toFixed(2)} • Stock: ${p.qty}</div>
+          <div style="margin-top:8px;display:flex;gap:8px">
+            <input type="number" min="1" value="1" style="width:70px;padding:6px;border:1px solid #e6eef2;border-radius:6px" class="qtyInput">
+            <button class="btn primary addToCart">Add to Cart</button>
+          </div>
+        `;
+        // add handlers
+        div.querySelector('.addToCart').addEventListener('click', ()=>{
+          const qnty = Number(div.querySelector('.qtyInput').value)||1;
+          addToCart(p.id,qnty);
+        });
+        catalogEl.appendChild(div);
+      });
+      updateCartCount();
+    }
+
+    document.getElementById('searchCatalog').addEventListener('input', (e)=>renderCatalog(e.target.value));
+
+    // add to cart
+    function addToCart(productId, qty){
+      const products = read(KEY_PRODUCTS);
+      const prod = products.find(x=>x.id===productId); if(!prod){ alert('Product not found'); return }
+      if(prod.qty < qty){ alert('Not enough stock'); return }
+      let cart = read(KEY_CART);
+      const existing = cart.find(i=>i.id===productId);
+      if(existing) existing.qty += qty; else cart.push({id:productId,name:prod.name,price:prod.price,qty:qty});
+      write(KEY_CART,cart);
+      updateCartCount();
+      alert(`${prod.name} (x${qty}) added to cart`);
+    }
+
+    // cart render
+    function renderCart(){ const cart = read(KEY_CART); const el = document.getElementById('cartList'); el.innerHTML=''; if(cart.length===0){ el.innerHTML='<div class="small">Cart is empty.</div>'; return }
+      const table = document.createElement('table'); table.innerHTML = '<thead><tr><th>Product</th><th>Price</th><th>Qty</th><th class="right">Subtotal</th><th class="right">Action</th></tr></thead>';
+      const tbody = document.createElement('tbody'); let total=0;
+      cart.forEach(item=>{ const sub = item.qty*item.price; total+=sub; const tr = document.createElement('tr'); tr.innerHTML = `<td>${escapeHtml(item.name)}</td><td>₹ ${Number(item.price).toFixed(2)}</td><td>${item.qty}</td><td class="right">₹ ${sub.toFixed(2)}</td><td class="right"><button class="btn ghost" data-id="${item.id}">Remove</button></td>`; tbody.appendChild(tr); });
+      table.appendChild(tbody); el.appendChild(table);
+      const foot = document.createElement('div'); foot.style.marginTop='8px'; foot.style.display='flex'; foot.style.justifyContent='space-between'; foot.innerHTML = `<strong>Total: ₹ ${total.toFixed(2)}</strong>`; el.appendChild(foot);
+      // handlers
+      el.querySelectorAll('button[data-id]').forEach(b=>b.addEventListener('click',()=>{ removeFromCart(b.dataset.id); renderCart(); }));
+      document.getElementById('checkout').onclick = checkout;
+      document.getElementById('clearCart').onclick = ()=>{ if(confirm('Clear cart?')){ write(KEY_CART,[]); renderCart(); updateCartCount(); }}
+    }
+
+    function removeFromCart(id){ let cart = read(KEY_CART); cart = cart.filter(i=>i.id!==id); write(KEY_CART,cart); updateCartCount(); }
+
+    function checkout(){
+      let cart = read(KEY_CART); if(cart.length===0){ alert('Cart empty'); return }
+      let products = read(KEY_PRODUCTS);
+      // check stock
+      for(const it of cart){ const p = products.find(x=>x.id===it.id); if(!p || p.qty < it.qty){ alert(`Insufficient stock for ${it.name}`); return } }
+      // deduct stock
+      for(const it of cart){ const p = products.find(x=>x.id===it.id); p.qty -= it.qty }
+      write(KEY_PRODUCTS,products);
+      // record sale
+      const sales = read(KEY_SALES);
+      const saleTotal = cart.reduce((s,i)=>s + i.qty*i.price,0);
+      sales.unshift({id: 's_'+Date.now(), date:new Date().toISOString(), items:cart, total:saleTotal});
+      write(KEY_SALES,sales);
+      // clear cart
+      write(KEY_CART,[]);
+      alert('Checkout successful. Sale recorded.');
+      renderCart(); renderInventory(); renderSales(); updateCartCount(); renderCatalog();
+    }
+
+    // inventory render
+    function renderInventory(){ const products = read(KEY_PRODUCTS); const tbody = document.getElementById('inventoryTable'); tbody.innerHTML=''; if(products.length===0){ tbody.innerHTML='<tr><td colspan="4" class="small">No products</td></tr>'; return }
+      products.forEach(p=>{ const tr = document.createElement('tr'); tr.innerHTML = `<td>${escapeHtml(p.name)}</td><td>₹ ${Number(p.price).toFixed(2)}</td><td>${p.qty}</td><td class="right"><button class="btn ghost edit" data-id="${p.id}">Edit</button> <button class="btn danger del" data-id="${p.id}">Delete</button></td>`; tbody.appendChild(tr); });
+      // edit/delete handlers
+      tbody.querySelectorAll('.edit').forEach(b=>b.addEventListener('click',()=>{ openEdit(b.dataset.id); }));
+      tbody.querySelectorAll('.del').forEach(b=>b.addEventListener('click',()=>{ if(confirm('Delete product?')){ deleteProduct(b.dataset.id); renderInventory(); renderCatalog(); } }));
+    }
+
+    function openEdit(id){ const products = read(KEY_PRODUCTS); const p = products.find(x=>x.id===id); if(!p) return; // switch to add tab
+      document.querySelectorAll('.nav-btn').forEach(x=>x.classList.remove('active')); document.querySelector('[data-target="add"]').classList.add('active'); showSection('add');
+      document.getElementById('pName').value = p.name; document.getElementById('pPrice').value = p.price; document.getElementById('pQty').value = p.qty; document.getElementById('pImage').value = p.image || '';
+      // store editing id
+      document.getElementById('productForm').dataset.editId = id;
+    }
+
+    function deleteProduct(id){ let products = read(KEY_PRODUCTS); products = products.filter(x=>x.id!==id); write(KEY_PRODUCTS,products); }
+
+    // add/edit product form
+    const form = document.getElementById('productForm'); form.addEventListener('submit',(e)=>{ e.preventDefault(); const name = document.getElementById('pName').value.trim(); const price = Number(document.getElementById('pPrice').value)||0; const qty = Number(document.getElementById('pQty').value)||0; const image = document.getElementById('pImage').value.trim() || SAME_IMG; const editId = form.dataset.editId;
+      let products = read(KEY_PRODUCTS);
+      if(editId){ // update
+        const p = products.find(x=>x.id===editId); if(p){ p.name=name; p.price=price; p.qty=qty; p.image=image; write(KEY_PRODUCTS,products); delete form.dataset.editId; alert('Product updated'); }
+      } else { // new
+        products.push({id:uid(),name,price,qty,image}); write(KEY_PRODUCTS,products); alert('Product added'); }
+      form.reset(); renderCatalog(); renderInventory();
+    });
+
+    document.getElementById('resetForm').addEventListener('click',()=>{ form.reset(); delete form.dataset.editId; });
+
+    // sales render
+    function renderSales(){ const sales = read(KEY_SALES); const tbody = document.getElementById('salesTable'); tbody.innerHTML=''; let totalRevenue=0; if(sales.length===0){ tbody.innerHTML = '<tr><td colspan="3" class="small">No sales yet</td></tr>'; document.getElementById('totalRevenue').textContent = '0.00'; return }
+      sales.forEach(s=>{ const date = new Date(s.date).toLocaleString(); const itemsSummary = s.items.map(i=>`${i.name} x${i.qty}`).join(', '); const tr = document.createElement('tr'); tr.innerHTML = `<td>${date}</td><td>${escapeHtml(itemsSummary)}</td><td class="right">₹ ${Number(s.total).toFixed(2)}</td>`; tbody.appendChild(tr); totalRevenue += Number(s.total); });
+      document.getElementById('totalRevenue').textContent = totalRevenue.toFixed(2);
+    }
+
+    // cart count
+    function updateCartCount(){ const c = read(KEY_CART).reduce((s,i)=>s+i.qty,0); document.getElementById('cartCount').textContent = c; }
+
+    // utilities
+    function escapeHtml(str){ return String(str).replace(/[&<>"']/g, (s)=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[s])); }
+
+    // import/export - optional
+    // initialize
+    seed(); renderCatalog(); renderInventory(); renderSales(); updateCartCount();
+
+    // expose for console (dev)
+    window.SM = {read,write,KEY_PRODUCTS,KEY_CART,KEY_SALES};
+  </script>
+</body>
+</html>
